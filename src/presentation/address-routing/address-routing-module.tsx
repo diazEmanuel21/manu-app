@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 
-import { optimizeDeliveryRoute, defaultOrigin } from "@/application/address-routing/optimize-delivery-route";
+import { defaultOrigin, optimizeDeliveryRoute } from "@/application/address-routing/optimize-delivery-route";
 import type { OptimizedRoute } from "@/domain/address-routing/types";
 
 const sampleAddresses = [
@@ -14,7 +14,7 @@ const sampleAddresses = [
   "Diagonal 74 # 31-88, Industrial",
 ];
 
-const highlightTone = {
+const priorityStyles = {
   0: "border-white/10 bg-white/5 text-white",
   1: "border-cyan-400/30 bg-cyan-400/10 text-cyan-100",
   2: "border-amber-400/30 bg-amber-400/10 text-amber-100",
@@ -28,18 +28,14 @@ export function AddressRoutingModule() {
   );
   const [isPending, startTransition] = useTransition();
 
-  const inputCount = useMemo(
-    () =>
-      draft
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean).length,
+  const count = useMemo(
+    () => draft.split("\n").map((line) => line.trim()).filter(Boolean).length,
     [draft],
   );
 
-  const optimize = () => {
+  const run = () => {
     const routes = draft
-      .split(/\n/)
+      .split("\n")
       .map((line) => line.trim())
       .filter(Boolean)
       .map((address) => ({ address }));
@@ -49,14 +45,14 @@ export function AddressRoutingModule() {
     });
   };
 
-  const loadSample = () => {
+  const load = () => {
     setDraft(sampleAddresses.join("\n"));
     startTransition(() => {
       setReport(optimizeDeliveryRoute(sampleAddresses.map((address) => ({ address }))));
     });
   };
 
-  const clearDraft = () => {
+  const clear = () => {
     setDraft("");
     startTransition(() => {
       setReport(optimizeDeliveryRoute([]));
@@ -68,318 +64,290 @@ export function AddressRoutingModule() {
     .join(" ");
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-7xl px-6 py-10 sm:px-8 lg:px-10">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,13,22,0.92),rgba(10,16,28,0.72))] shadow-[0_30px_120px_rgba(0,0,0,0.35)]">
-        <div className="grid gap-6 border-b border-white/10 px-6 py-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-8">
-          <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs uppercase tracking-[0.35em] text-cyan-100">
-              Delivery intelligence
+    <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,13,22,0.96),rgba(10,16,28,0.82))] shadow-[0_30px_120px_rgba(0,0,0,0.35)]">
+        <header className="border-b border-white/10 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-cyan-100">
+                Route
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-slate-300">
+                {isPending ? "..." : "Ready"}
+              </span>
             </div>
-            <div className="space-y-4">
-              <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                Routing for delivery teams that need faster drops and cleaner dispatch order.
+
+            <div className="space-y-2">
+              <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl lg:text-5xl">
+                Ordena direcciones. Toca optimizar. Sal a entregar.
               </h1>
-              <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                Pega direcciones, optimiza el orden automaticamente y entrega una secuencia
-                operativa basada en proximidad, prioridad y zonas. This slice is built as a
-                product module, not a demo widget.
+              <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+                Mobile-first, low-friction y sin texto extra.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={optimize}
-                className="rounded-full bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-100"
-              >
-                Optimize route
-              </button>
-              <button
-                type="button"
-                onClick={loadSample}
-                className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:border-cyan-400/30 hover:bg-white/10"
-              >
-                Load sample
-              </button>
-              <button
-                type="button"
-                onClick={clearDraft}
-                className="rounded-full border border-white/15 bg-transparent px-5 py-3 text-sm font-medium text-slate-300 transition hover:border-white/30 hover:text-white"
-              >
-                Clear
-              </button>
+
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Stat label="Stops" value={report.summary.totalStops.toString()} />
+              <Stat label="Km" value={report.summary.totalDistanceKm.toFixed(1)} />
+              <Stat label="Min" value={report.summary.estimatedMinutes.toString()} />
             </div>
           </div>
+        </header>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <MetricCard label="Stops" value={report.summary.totalStops.toString()} />
-            <MetricCard label="Distance" value={`${report.summary.totalDistanceKm.toFixed(1)} km`} />
-            <MetricCard label="ETA" value={`${report.summary.estimatedMinutes} min`} />
-            <MetricCard label="Route score" value={`${report.summary.routeScore}/100`} />
-          </div>
-        </div>
-
-        <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1.02fr_0.98fr] lg:px-8 lg:py-8">
+        <div className="grid gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-8">
           <section className="space-y-4">
-            <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/60 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/60 p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                    Input console
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-slate-400">
+                    Input
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold text-white">
-                    Paste one address per line
-                  </h2>
+                  <p className="mt-1 text-sm font-medium text-white">Pegue una por linea</p>
                 </div>
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.25em] text-slate-300">
-                  {inputCount} entries
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-slate-300">
+                  {count}
                 </span>
               </div>
 
               <textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                className="mt-4 min-h-[250px] w-full rounded-[1.25rem] border border-white/10 bg-white/5 px-4 py-4 font-mono text-sm leading-7 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400/40 focus:bg-white/[0.07]"
+                className="mt-4 min-h-[190px] w-full rounded-[1.2rem] border border-white/10 bg-white/5 px-4 py-4 font-mono text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500 focus:border-cyan-400/40 focus:bg-white/[0.07] sm:min-h-[230px]"
                 placeholder="Cra 45 # 12-34, Norte"
               />
 
-              <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-400">
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                  Priority words: urgente, vip, oficina, bodega
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                  Zone words: norte, sur, oriente, occidente, centro
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                  Optimized from {defaultOrigin.label}
-                </span>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <Chip onClick={run} tone="solid">
+                  Ordenar
+                </Chip>
+                <Chip onClick={load} tone="soft">
+                  Ejemplo
+                </Chip>
+                <Chip onClick={clear} tone="ghost">
+                  Limpiar
+                </Chip>
               </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
-              <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Route map</p>
-                    <h3 className="mt-2 text-lg font-semibold text-white">Operational path</h3>
-                  </div>
-                  <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-cyan-100">
-                    {isPending ? "Optimizing" : "Ready"}
-                  </span>
+            <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-slate-400">
+                    Mapa
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-white">Ruta</p>
                 </div>
-
-                <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_40%),linear-gradient(180deg,rgba(8,15,26,1),rgba(5,10,18,1))] p-4">
-                  <svg viewBox="0 0 100 100" className="h-[300px] w-full">
-                    <defs>
-                      <linearGradient id="routeLine" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#67e8f9" />
-                        <stop offset="100%" stopColor="#f59e0b" />
-                      </linearGradient>
-                    </defs>
-                    <g opacity="0.35">
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <line
-                          key={`h-${index}`}
-                          x1="0"
-                          y1={index * 20}
-                          x2="100"
-                          y2={index * 20}
-                          stroke="rgba(148,163,184,0.2)"
-                          strokeWidth="0.4"
-                        />
-                      ))}
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <line
-                          key={`v-${index}`}
-                          x1={index * 20}
-                          y1="0"
-                          x2={index * 20}
-                          y2="100"
-                          stroke="rgba(148,163,184,0.2)"
-                          strokeWidth="0.4"
-                        />
-                      ))}
-                    </g>
-
-                    <circle cx={scale(defaultOrigin.x)} cy={scale(100 - defaultOrigin.y)} r="4.5" fill="#f8fafc" />
-                    <text
-                      x={scale(defaultOrigin.x) + 4}
-                      y={scale(100 - defaultOrigin.y) - 5}
-                      fill="#e2e8f0"
-                      fontSize="4"
-                    >
-                      Origin
-                    </text>
-
-                    {report.polyline.length > 1 ? (
-                      <polyline
-                        points={routePoints}
-                        fill="none"
-                        stroke="url(#routeLine)"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    ) : null}
-
-                    {report.stops.map((stop, index) => (
-                      <g key={stop.id}>
-                        <circle
-                          cx={scale(stop.x)}
-                          cy={scale(100 - stop.y)}
-                          r={index === 0 ? "4.6" : "4.1"}
-                          fill={toneFill(stop.priority)}
-                          stroke="rgba(255,255,255,0.9)"
-                          strokeWidth="0.7"
-                        />
-                        <text
-                          x={scale(stop.x) + 3.5}
-                          y={scale(100 - stop.y) - 3}
-                          fill="#e2e8f0"
-                          fontSize="3.6"
-                        >
-                          {index + 1}
-                        </text>
-                      </g>
-                    ))}
-                  </svg>
-                </div>
+                <span className="text-[11px] uppercase tracking-[0.25em] text-slate-400">
+                  {report.summary.routeScore}/100
+                </span>
               </div>
 
-              <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                      Route intelligence
-                    </p>
-                    <h3 className="mt-2 text-lg font-semibold text-white">Sequenced stops</h3>
-                  </div>
-                  <span className="text-xs uppercase tracking-[0.25em] text-slate-400">
-                    {report.summary.clusters} clusters
-                  </span>
-                </div>
+              <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_40%),linear-gradient(180deg,rgba(8,15,26,1),rgba(5,10,18,1))] p-3">
+                <svg viewBox="0 0 100 100" className="h-[250px] w-full sm:h-[300px]">
+                  <defs>
+                    <linearGradient id="routeLine" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#67e8f9" />
+                      <stop offset="100%" stopColor="#f59e0b" />
+                    </linearGradient>
+                  </defs>
+                  <g opacity="0.35">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <line
+                        key={`h-${index}`}
+                        x1="0"
+                        y1={index * 20}
+                        x2="100"
+                        y2={index * 20}
+                        stroke="rgba(148,163,184,0.2)"
+                        strokeWidth="0.4"
+                      />
+                    ))}
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <line
+                        key={`v-${index}`}
+                        x1={index * 20}
+                        y1="0"
+                        x2={index * 20}
+                        y2="100"
+                        stroke="rgba(148,163,184,0.2)"
+                        strokeWidth="0.4"
+                      />
+                    ))}
+                  </g>
 
-                <div className="mt-5 space-y-3">
-                  {report.stops.length > 0 ? (
-                    report.stops.map((stop) => (
-                      <article
-                        key={stop.id}
-                        className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4"
+                  <circle cx={scale(defaultOrigin.x)} cy={scale(100 - defaultOrigin.y)} r="4.5" fill="#f8fafc" />
+                  <text
+                    x={scale(defaultOrigin.x) + 4}
+                    y={scale(100 - defaultOrigin.y) - 5}
+                    fill="#e2e8f0"
+                    fontSize="4"
+                  >
+                    O
+                  </text>
+
+                  {report.polyline.length > 1 ? (
+                    <polyline
+                      points={routePoints}
+                      fill="none"
+                      stroke="url(#routeLine)"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  ) : null}
+
+                  {report.stops.map((stop, index) => (
+                    <g key={stop.id}>
+                      <circle
+                        cx={scale(stop.x)}
+                        cy={scale(100 - stop.y)}
+                        r={index === 0 ? "4.6" : "4.1"}
+                        fill={toneFill(stop.priority)}
+                        stroke="rgba(255,255,255,0.9)"
+                        strokeWidth="0.7"
+                      />
+                      <text
+                        x={scale(stop.x) + 3.5}
+                        y={scale(100 - stop.y) - 3}
+                        fill="#e2e8f0"
+                        fontSize="3.6"
                       >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[11px] uppercase tracking-[0.25em] text-slate-300">
-                                #{stop.sequence}
-                              </span>
-                              <span
-                                className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.25em] ${highlightTone[stop.priority]}`}
-                              >
-                                {stop.zone}
-                              </span>
-                            </div>
-                            <p className="mt-3 text-sm font-medium text-white">{stop.address}</p>
-                            <p className="mt-1 text-sm leading-6 text-slate-400">{stop.reason}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-white">
-                              {stop.distanceFromPreviousKm.toFixed(1)} km
-                            </p>
-                            <p className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-500">
-                              {stop.estimatedMinutes} min
-                            </p>
-                          </div>
-                        </div>
-                      </article>
-                    ))
-                  ) : (
-                    <div className="rounded-[1.25rem] border border-dashed border-white/15 bg-white/5 p-6 text-sm leading-7 text-slate-400">
-                      Add addresses and run the optimizer to generate an ordered delivery route.
-                    </div>
-                  )}
-                </div>
+                        {index + 1}
+                      </text>
+                    </g>
+                  ))}
+                </svg>
               </div>
             </div>
           </section>
 
-          <aside className="space-y-4">
-            <div className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,18,32,0.95),rgba(10,15,25,0.72))] p-5">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Operational KPI</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                <InfoCard
-                  title="First stop"
-                  value={report.summary.firstStop || "No route yet"}
-                  description="The route starts with the best balance of priority and proximity."
-                />
-                <InfoCard
-                  title="Last stop"
-                  value={report.summary.lastStop || "No route yet"}
-                  description="The tail of the route is kept close to the remaining cluster."
-                />
-                <InfoCard
-                  title="Priority stops"
-                  value={report.summary.highPriorityStops.toString()}
-                  description="Urgent deliveries are promoted ahead of regular drops."
-                />
+          <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+            <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/60 p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] uppercase tracking-[0.28em] text-slate-400">Orden</p>
+                <p className="text-[11px] uppercase tracking-[0.25em] text-slate-400">
+                  {report.summary.clusters} zonas
+                </p>
+              </div>
+
+              <div className="mt-4 max-h-[420px] space-y-2 overflow-auto pr-1 lg:max-h-[calc(100vh-320px)]">
+                {report.stops.length > 0 ? (
+                  report.stops.map((stop) => (
+                    <article
+                      key={stop.id}
+                      className="rounded-[1rem] border border-white/10 bg-white/5 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-300">
+                              #{stop.sequence}
+                            </span>
+                            <span
+                              className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.25em] ${priorityStyles[stop.priority]}`}
+                            >
+                              {stop.zone}
+                            </span>
+                          </div>
+                          <p className="mt-2 truncate text-sm font-medium text-white">
+                            {stop.address}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-semibold text-white">
+                            {stop.distanceFromPreviousKm.toFixed(1)} km
+                          </p>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                            {stop.estimatedMinutes}m
+                          </p>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <div className="rounded-[1rem] border border-dashed border-white/15 bg-white/5 p-4 text-sm text-slate-400">
+                    Sin datos.
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/60 p-5">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Why this works</p>
-              <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
-                <li>Coordinates are inferred from the address text and zone hints.</li>
-                <li>Priority deliveries are lifted into the first routing bucket.</li>
-                <li>Within each bucket, the engine picks the nearest next stop.</li>
-                <li>The map and summary stay deterministic, so the UX is easy to trust.</li>
-              </ul>
-            </div>
-
-            <div className="rounded-[1.75rem] border border-cyan-400/15 bg-cyan-400/8 p-5">
-              <p className="text-xs uppercase tracking-[0.3em] text-cyan-100/70">Architecture</p>
-              <div className="mt-4 space-y-3 text-sm leading-7 text-slate-200">
-                <p>
-                  Domain types live under <span className="font-mono text-cyan-100">domain/</span>.
-                </p>
-                <p>
-                  The route optimizer is a pure use case under{" "}
-                  <span className="font-mono text-cyan-100">application/</span>.
-                </p>
-                <p>
-                  The page only composes the module through{" "}
-                  <span className="font-mono text-cyan-100">presentation/</span>.
-                </p>
-              </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <MiniStat label="Inicio" value={report.summary.firstStop || "-"} />
+              <MiniStat label="Fin" value={report.summary.lastStop || "-"} />
+              <MiniStat label="Priority" value={report.summary.highPriorityStops.toString()} />
             </div>
           </aside>
         </div>
       </section>
+
+      <div className="sticky bottom-3 mt-3 grid grid-cols-3 gap-2 rounded-full border border-white/10 bg-slate-950/90 p-2 backdrop-blur-xl sm:hidden">
+        <BottomAction onClick={run}>Ordenar</BottomAction>
+        <BottomAction onClick={load}>Ejemplo</BottomAction>
+        <BottomAction onClick={clear}>Limpiar</BottomAction>
+      </div>
     </main>
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-      <p className="text-xs uppercase tracking-[0.3em] text-slate-400">{label}</p>
-      <p className="mt-3 text-2xl font-semibold tracking-tight text-white">{value}</p>
+    <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">
+      <p className="text-[10px] uppercase tracking-[0.28em] text-slate-400">{label}</p>
+      <p className="mt-2 text-xl font-semibold tracking-tight text-white">{value}</p>
     </div>
   );
 }
 
-function InfoCard({
-  title,
-  value,
-  description,
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">
+      <p className="text-[10px] uppercase tracking-[0.28em] text-slate-400">{label}</p>
+      <p className="mt-2 truncate text-sm font-medium text-white">{value}</p>
+    </div>
+  );
+}
+
+function Chip({
+  children,
+  onClick,
+  tone,
 }: {
-  title: string;
-  value: string;
-  description: string;
+  children: React.ReactNode;
+  onClick: () => void;
+  tone: "solid" | "soft" | "ghost";
+}) {
+  const base =
+    "rounded-full px-3 py-3 text-sm font-medium transition active:scale-[0.98] sm:py-2";
+  const style =
+    tone === "solid"
+      ? "bg-white text-slate-950 hover:bg-cyan-100"
+      : tone === "soft"
+        ? "border border-white/15 bg-white/5 text-white hover:border-cyan-400/30 hover:bg-white/10"
+        : "border border-white/10 bg-transparent text-slate-300 hover:border-white/30 hover:text-white";
+
+  return (
+    <button type="button" onClick={onClick} className={`${base} ${style}`}>
+      {children}
+    </button>
+  );
+}
+
+function BottomAction({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
 }) {
   return (
-    <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-      <p className="text-xs uppercase tracking-[0.3em] text-slate-400">{title}</p>
-      <p className="mt-3 break-words text-sm font-medium text-white">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full px-3 py-2 text-sm font-medium text-white transition active:scale-[0.98]"
+    >
+      {children}
+    </button>
   );
 }
 
